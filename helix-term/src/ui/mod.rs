@@ -1,5 +1,6 @@
 mod completion;
 pub(crate) mod editor;
+pub(crate) mod fidget;
 mod info;
 mod markdown;
 pub mod menu;

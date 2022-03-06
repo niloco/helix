@@ -52,7 +52,7 @@ pub struct Application {
 
     signals: Signals,
     jobs: Jobs,
-    lsp_progress: LspProgressMap,
+    lsp_progress: ui::fidget::Fidget,
 }
 
 impl Application {
@@ -187,6 +187,8 @@ impl Application {
         let signals = futures_util::stream::empty();
         #[cfg(not(windows))]
         let signals = Signals::new(&[signal::SIGTSTP, signal::SIGCONT])?;
+        let (lsp_progress, fidget_widget) = ui::fidget::fidget_and_widget();
+        compositor.push(Box::new(fidget_widget));
 
         let app = Self {
             compositor,
@@ -199,7 +201,7 @@ impl Application {
 
             signals,
             jobs: Jobs::new(),
-            lsp_progress: LspProgressMap::new(),
+            lsp_progress,
         };
 
         Ok(app)
@@ -549,7 +551,7 @@ impl Application {
                                 if message.is_some() {
                                     (None, message, &None)
                                 } else {
-                                    self.lsp_progress.end_progress(server_id, &token);
+                                    self.lsp_progress.end_progress(server_id, &token, None);
                                     if !self.lsp_progress.is_progressing(server_id) {
                                         editor_view.spinners_mut().get_or_create(server_id).stop();
                                     }
@@ -591,8 +593,10 @@ impl Application {
                             (None, None, None) => format!("[{}]", token_d),
                         };
 
-                        if let lsp::WorkDoneProgress::End(_) = work {
-                            self.lsp_progress.end_progress(server_id, &token);
+                        if let lsp::WorkDoneProgress::End(lsp::WorkDoneProgressEnd { message }) =
+                            work
+                        {
+                            self.lsp_progress.end_progress(server_id, &token, message);
                             if !self.lsp_progress.is_progressing(server_id) {
                                 editor_view.spinners_mut().get_or_create(server_id).stop();
                             }
