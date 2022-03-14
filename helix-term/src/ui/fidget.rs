@@ -1,4 +1,4 @@
-use helix_lsp::{lsp, LspProgressMap, ProgressStatus};
+use helix_lsp::{lsp, ProgressStatus};
 use helix_view::graphics::Rect;
 use tui::{
     layout::Alignment,
@@ -11,7 +11,6 @@ use crate::compositor::{Component, EventResult};
 use super::Spinner;
 
 pub struct Fidget {
-    fidgets: LspProgressMap,
     tx: std::sync::mpsc::Sender<FidgetMessage>,
 }
 
@@ -52,10 +51,7 @@ pub fn fidget_and_widget() -> (Fidget, FidgetWidget) {
     let (tx, rx) = std::sync::mpsc::channel();
 
     (
-        Fidget {
-            fidgets: LspProgressMap::new(),
-            tx,
-        },
+        Fidget { tx },
         FidgetWidget {
             active: Vec::new(),
             _spinner: Spinner::dots(200),
@@ -131,65 +127,41 @@ impl Item {
 }
 
 impl Fidget {
-    pub fn is_progressing(&self, id: usize) -> bool {
-        self.fidgets.is_progressing(id)
-    }
-
-    /// Returns last progress status for a given server with `id` and `token`.
-    pub fn _progress(&self, id: usize, token: &lsp::ProgressToken) -> Option<&ProgressStatus> {
-        self.fidgets.progress(id, token)
-    }
-
-    /// Checks if progress `token` for server with `id` is created.
-    pub fn _is_created(&mut self, id: usize, token: &lsp::ProgressToken) -> bool {
-        self.fidgets.is_created(id, token)
-    }
-
     pub fn create(&mut self, id: usize, token: lsp::ProgressToken) {
         self.tx
             .send(FidgetMessage {
                 id,
-                token: token.clone(),
+                token,
                 progress: ProgressStatus::Created,
             })
-            .unwrap();
-        self.fidgets.create(id, token)
+            .unwrap()
     }
 
     /// Ends the progress by removing the `token` from server with `id`, if removed returns the value.
     pub fn end_progress(
         &mut self,
         id: usize,
-        token: &lsp::ProgressToken,
-        message: Option<String>,
-    ) -> Option<ProgressStatus> {
+        token: lsp::ProgressToken,
+        last_message: lsp::WorkDoneProgressEnd,
+    ) {
         self.tx
             .send(FidgetMessage {
                 id,
-                token: token.clone(),
-                progress: ProgressStatus::Started(lsp::WorkDoneProgress::End(
-                    lsp::WorkDoneProgressEnd { message },
-                )),
+                token,
+                progress: ProgressStatus::Started(lsp::WorkDoneProgress::End(last_message)),
             })
             .unwrap();
-        self.fidgets.end_progress(id, token)
     }
 
     /// Updates the progess of `token` for server with `id` to `status`, returns the value replaced or `None`.
-    pub fn update(
-        &mut self,
-        id: usize,
-        token: lsp::ProgressToken,
-        status: lsp::WorkDoneProgress,
-    ) -> Option<ProgressStatus> {
+    pub fn update(&mut self, id: usize, token: lsp::ProgressToken, status: lsp::WorkDoneProgress) {
         self.tx
             .send(FidgetMessage {
                 id,
-                token: token.clone(),
-                progress: ProgressStatus::Started(status.clone()),
+                token,
+                progress: ProgressStatus::Started(status),
             })
             .unwrap();
-        self.fidgets.update(id, token, status)
     }
 }
 

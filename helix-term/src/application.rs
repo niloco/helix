@@ -523,85 +523,109 @@ impl Application {
                     Notification::LogMessage(params) => {
                         log::info!("window/logMessage: {:?}", params);
                     }
-                    Notification::ProgressMessage(params)
-                        if !self
-                            .compositor
-                            .has_component(std::any::type_name::<ui::Prompt>()) =>
-                    {
-                        let editor_view = self
+                    // Notification::ProgressMessage(params)
+                    //     if !self
+                    //         .compositor
+                    //         .has_component(std::any::type_name::<ui::Prompt>()) =>
+                    // {
+                    //     let editor_view = self
+                    //         .compositor
+                    //         .find::<ui::EditorView>()
+                    //         .expect("expected at least one EditorView");
+                    //     let lsp::ProgressParams { token, value } = params;
+
+                    //     let lsp::ProgressParamsValue::WorkDone(work) = value;
+                    //     let parts = match &work {
+                    //         lsp::WorkDoneProgress::Begin(lsp::WorkDoneProgressBegin {
+                    //             title,
+                    //             message,
+                    //             percentage,
+                    //             ..
+                    //         }) => (Some(title), message, percentage),
+                    //         lsp::WorkDoneProgress::Report(lsp::WorkDoneProgressReport {
+                    //             message,
+                    //             percentage,
+                    //             ..
+                    //         }) => (None, message, percentage),
+                    //         lsp::WorkDoneProgress::End(lsp::WorkDoneProgressEnd { message }) => {
+                    //             if message.is_some() {
+                    //                 (None, message, &None)
+                    //             } else {
+                    //                 self.lsp_progress.end_progress(server_id, &token, None);
+                    //                 if !self.lsp_progress.is_progressing(server_id) {
+                    //                     editor_view.spinners_mut().get_or_create(server_id).stop();
+                    //                 }
+                    //                 self.editor.clear_status();
+
+                    //                 // we want to render to clear any leftover spinners or messages
+                    //                 return;
+                    //             }
+                    //         }
+                    //     };
+
+                    //     let token_d: &dyn std::fmt::Display = match &token {
+                    //         lsp::NumberOrString::Number(n) => n,
+                    //         lsp::NumberOrString::String(s) => s,
+                    //     };
+
+                    //     let status = match parts {
+                    //         (Some(title), Some(message), Some(percentage)) => {
+                    //             format!("[{}] {}% {} - {}", token_d, percentage, title, message)
+                    //         }
+                    //         (Some(title), None, Some(percentage)) => {
+                    //             format!("[{}] {}% {}", token_d, percentage, title)
+                    //         }
+                    //         (Some(title), Some(message), None) => {
+                    //             format!("[{}] {} - {}", token_d, title, message)
+                    //         }
+                    //         (None, Some(message), Some(percentage)) => {
+                    //             format!("[{}] {}% {}", token_d, percentage, message)
+                    //         }
+                    //         (Some(title), None, None) => {
+                    //             format!("[{}] {}", token_d, title)
+                    //         }
+                    //         (None, Some(message), None) => {
+                    //             format!("[{}] {}", token_d, message)
+                    //         }
+                    //         (None, None, Some(percentage)) => {
+                    //             format!("[{}] {}%", token_d, percentage)
+                    //         }
+                    //         (None, None, None) => format!("[{}]", token_d),
+                    //     };
+
+                    //     if let lsp::WorkDoneProgress::End(lsp::WorkDoneProgressEnd { message }) =
+                    //         work
+                    //     {
+                    //         self.lsp_progress.end_progress(server_id, &token, message);
+                    //         if !self.lsp_progress.is_progressing(server_id) {
+                    //             editor_view.spinners_mut().get_or_create(server_id).stop();
+                    //         }
+                    //     } else {
+                    //         self.lsp_progress.update(server_id, token, work);
+                    //     }
+
+                    //     if self.config.lsp.display_messages {
+                    //         self.editor.set_status(status);
+                    //     }
+                    // }
+                    Notification::ProgressMessage(params) => {
+                        // do nothing
+                        let _editor_view = self
                             .compositor
                             .find::<ui::EditorView>()
                             .expect("expected at least one EditorView");
+
                         let lsp::ProgressParams { token, value } = params;
 
                         let lsp::ProgressParamsValue::WorkDone(work) = value;
-                        let parts = match &work {
-                            lsp::WorkDoneProgress::Begin(lsp::WorkDoneProgressBegin {
-                                title,
-                                message,
-                                percentage,
-                                ..
-                            }) => (Some(title), message, percentage),
-                            lsp::WorkDoneProgress::Report(lsp::WorkDoneProgressReport {
-                                message,
-                                percentage,
-                                ..
-                            }) => (None, message, percentage),
-                            lsp::WorkDoneProgress::End(lsp::WorkDoneProgressEnd { message }) => {
-                                if message.is_some() {
-                                    (None, message, &None)
-                                } else {
-                                    self.lsp_progress.end_progress(server_id, &token, None);
-                                    if !self.lsp_progress.is_progressing(server_id) {
-                                        editor_view.spinners_mut().get_or_create(server_id).stop();
-                                    }
-                                    self.editor.clear_status();
 
-                                    // we want to render to clear any leftover spinners or messages
-                                    return;
-                                }
+                        match work {
+                            lsp::WorkDoneProgress::Begin(_) | lsp::WorkDoneProgress::Report(_) => {
+                                self.lsp_progress.update(server_id, token, work);
                             }
-                        };
-
-                        let token_d: &dyn std::fmt::Display = match &token {
-                            lsp::NumberOrString::Number(n) => n,
-                            lsp::NumberOrString::String(s) => s,
-                        };
-
-                        let status = match parts {
-                            (Some(title), Some(message), Some(percentage)) => {
-                                format!("[{}] {}% {} - {}", token_d, percentage, title, message)
-                            }
-                            (Some(title), None, Some(percentage)) => {
-                                format!("[{}] {}% {}", token_d, percentage, title)
-                            }
-                            (Some(title), Some(message), None) => {
-                                format!("[{}] {} - {}", token_d, title, message)
-                            }
-                            (None, Some(message), Some(percentage)) => {
-                                format!("[{}] {}% {}", token_d, percentage, message)
-                            }
-                            (Some(title), None, None) => {
-                                format!("[{}] {}", token_d, title)
-                            }
-                            (None, Some(message), None) => {
-                                format!("[{}] {}", token_d, message)
-                            }
-                            (None, None, Some(percentage)) => {
-                                format!("[{}] {}%", token_d, percentage)
-                            }
-                            (None, None, None) => format!("[{}]", token_d),
-                        };
-
-                        if let lsp::WorkDoneProgress::End(lsp::WorkDoneProgressEnd { message }) =
-                            work
-                        {
-                            self.lsp_progress.end_progress(server_id, &token, message);
-                            if !self.lsp_progress.is_progressing(server_id) {
-                                editor_view.spinners_mut().get_or_create(server_id).stop();
-                            }
-                        } else {
-                            self.lsp_progress.update(server_id, token, work);
+                            lsp::WorkDoneProgress::End(last_progress) => self
+                                .lsp_progress
+                                .end_progress(server_id, token, last_progress),
                         }
 
                         if self.config.load().editor.lsp.display_messages {
