@@ -187,21 +187,34 @@ impl Component for FidgetWidget {
         _cx: &mut crate::compositor::Context,
     ) {
         self.update();
+
         let mut to_render = Vec::new();
 
-        for p in self.active.iter().rev() {
+        for p in self.active.iter_mut().rev() {
             to_render.push(Spans::from(Span::raw(format!("id: {}", p.id))));
 
-            for item in p.state.iter().rev() {
-                if let Some(line) = &item.line {
-                    to_render.push(Spans::from(Span::raw(line)))
+            for item in p.state.iter_mut().rev() {
+                if item.finished {
+                    if let Some(line) = item.line.take() {
+                        to_render.push(Spans::from(Span::raw(line)))
+                    }
+                } else {
+                    if let Some(line) = &item.line {
+                        to_render.push(Spans::from(Span::raw(line)))
+                    }
                 }
             }
         }
 
-        let paragraph = Paragraph::new(to_render).alignment(Alignment::Center);
+        let paragraph = Paragraph::new(to_render).alignment(Alignment::Left);
+        let smaller_area = Rect {
+            x: area.x + area.width / 2,
+            y: area.y + area.height / 2,
+            width: area.width / 3,
+            height: area.height / 3,
+        };
 
-        paragraph.render(area, frame)
+        paragraph.render(smaller_area, frame)
     }
 
     fn cursor(
